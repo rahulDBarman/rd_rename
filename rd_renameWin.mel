@@ -106,8 +106,8 @@ global proc rdRn_doRename(string $mode)
             int $size = size($hi);
             for($j=0; $j<$size;  ++$j)
             {   
-                string $shortName = rd_getShortName($hi[$j]);
-                rdRn_renameOne ($size-$j) $shortName;
+            
+                rdRn_renameOne ($size-$j) $hi[$j];
             }
         } 
     }
@@ -121,14 +121,16 @@ global proc rdRn_renameOne(string $num, string $obj)
     string $searchInput = `textField -q -tx rdRnSearchInput`;
     $option = `optionMenuGrp -q -v rdRnOptionMenu`;
     int $autoType = `checkBox -q -v rdrnAutoType`;
+
+    string $shortName = rd_getShortName($obj);
     
     if($option == "Prefix")
-        rename $obj ($textInput+$obj);
+        rename $obj ($textInput+$shortName);
     if($option == "Sufix")
-        rename $obj ($obj+$textInput);
+        rename $obj ($shortName+$textInput);
     if($option == "Replace")
     {
-        string $name = `substitute $searchInput $obj $textInput`;
+        string $name = `substitute $searchInput $shortName $textInput`;
         rename $obj $name ;
     }
     if($option == "Chain")
@@ -181,6 +183,5 @@ global proc string rd_getShortName(string $obj)
     string $shotName = $array[size($array)-1];
     return $shotName;
 }
-
 
 ///_____THE___END
