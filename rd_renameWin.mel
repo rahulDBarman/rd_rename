@@ -1,0 +1,179 @@
+//Date created : 07-11-2020
+//Created by Rahul D Barman 
+//Last modified : 07-11-2020
+global proc rd_renameWin()
+{
+////////////window
+if (`window -ex rdRenameWin`)
+deleteUI rdRenameWin;
+window -s on -w 350 -h 250 -t "rd renameWin" rdRenameWin;
+
+//////////// Head
+columnLayout -adj on;
+separator -st "none"  -vis on -h 10 ;
+text -l "Rahul D's Rename Tool ";
+
+separator -st "none"  -vis on -h 5 ;
+rowColumnLayout -nc 3 -cw 1 100 -cw 2 50;
+optionMenuGrp  -adj on -l "" -cc "rdRn_onOptionMenuChange" rdRnOptionMenu; 
+menuItem -l "Chain";
+menuItem -l "Replace";
+menuItem -l "Prefix";
+menuItem -l "Sufix";
+
+text -l "";
+checkBox -vis on -l "Auto Type" rdrnAutoType;
+
+setParent -u;
+
+////////coloum 2
+rowColumnLayout -en off -nc 5 -cw 1 10 -cw 2 20 -cw 3 200 rdRnSearchCol;
+text -l "";
+button -l ">" -c "rdRn_getObj rdRnSearchInput";
+textField -h 10 -sf  rdRnSearchInput;
+setParent -u;
+
+
+////////coloum 3
+rowColumnLayout -nc 5 -cw 1 10 -cw 2 20 -cw 3 200;
+text -l "";
+button -l ">" -c "rdRn_getObj rdRnReplaceInput";
+textField  rdRnReplaceInput;
+setParent -u;
+
+separator -st "none"  -vis on -h 10 ;
+////////coloum 4
+rowColumnLayout -nc 5 -cw 1 10 -cw 2 100 -cw 3 10 -cw 4 100 -cw 5 10;
+text -l "";
+button -l "Rename Sel" -c "rdRn_doRename Sel";
+text -l "";
+button -l "Rename Hi" -c "rdRn_doRename Hi";
+text -l "";
+setParent -u;
+
+
+showWindow rdRenameWin;
+//////////////////Window End
+}
+rd_renameWin;//_connectionMaker_end
+
+//// All procs
+
+global proc rdRn_onOptionMenuChange()
+{
+    $option = `optionMenuGrp -q -v rdRnOptionMenu`;
+
+    if($option == "Prefix")
+    {   rowColumnLayout -e -en off rdRnSearchCol;
+        checkBox -e -vis false rdrnAutoType;}
+    if($option == "Sufix")
+    {   rowColumnLayout -e -en off rdRnSearchCol;
+        checkBox -e -vis off rdrnAutoType;}
+    if($option == "Replace")
+    {   rowColumnLayout -e -en on rdRnSearchCol;
+        checkBox -e -vis off rdrnAutoType;}
+    if($option == "Chain")
+    {   rowColumnLayout -e -en off rdRnSearchCol;
+        checkBox -e -vis on rdrnAutoType;}
+
+    
+}
+
+global proc rdRn_getObj(string $textInput)
+{
+	string $sl[] = `ls-sl`;
+    textField -e -tx ($sl) $textInput;
+}
+
+global proc rdRn_doRename(string $mode)
+{
+    string $sel[] = `ls-sl`;
+    //print $sel;
+    if($mode == "Sel")
+    {
+        for($i=0; $i<size($sel); ++$i)        
+        {
+            rdRn_renameOne ($i+1) $sel[$i];
+            //print $sel[$i];
+        }
+    }
+    if($mode=="Hi")
+    {
+        for($i=0; $i<size($sel); ++$i)
+        {            
+            string $hi[] = `listRelatives -f  -ad  -c $sel[$i]`;
+            $hi[size($hi)] = $sel[$i];
+            int $size = size($hi);
+            for($j=0; $j<$size;  ++$j)
+            {   
+                string $shortName = rd_getShortName($hi[$j]);
+                rdRn_renameOne ($size-$j) $shortName;
+            }
+        } 
+    }
+
+
+}
+
+global proc rdRn_renameOne(string $num, string $obj)
+{
+    string $textInput = `textField -q -tx rdRnReplaceInput`;
+    string $searchInput = `textField -q -tx rdRnSearchInput`;
+    $option = `optionMenuGrp -q -v rdRnOptionMenu`;
+    int $autoType = `checkBox -q -v rdrnAutoType`;
+    
+    if($option == "Prefix")
+        rename $obj ($textInput+$obj);
+    if($option == "Sufix")
+        rename $obj ($obj+$textInput);
+    if($option == "Replace")
+    {
+        string $name = `substitute $searchInput $obj $textInput`;
+        rename $obj $name ;
+    }
+    if($option == "Chain")
+    {
+        string $name, $type;
+        string $hashes = `match "#+" $textInput`;
+        string $zero;
+        int $zeroSize = size($hashes) - size($num);
+        for($i=0;$i<$zeroSize; ++$i)
+            {$zero = "0"+$zero;}
+        $name = `substitute $hashes $textInput ($zero + $num)`;
+        if($name==$textInput)
+            $name = ($textInput + $num);
+        if($autoType==1)
+            $type = rdRn_getObjType($obj);
+        rename $obj ($name+$type) ;
+    }
+
+}
+
+global proc string rdRn_getObjType(string $object)
+{
+    string $shape[] = `listRelatives -f -s $object`;
+    if (!`size($shape)`)
+        $shape[0] = $object;
+    string $shapeType = `nodeType $shape`;
+    string $return;
+
+    switch ($shapeType){
+        case "mesh":
+            $return = "_Geo"; break;
+        case "joint":
+            $return = "_Jnt"; break;
+        case "transform":
+            $return = "_Grp"; break;
+        case "clusterHandle":
+            $return = "_Cls"; break;
+        case "locator":
+            $return = "_Loc"; break;
+        case "nurbsCurve":
+            $return = "_Crv"; break;                                            
+    }
+    return $return;
+}
+    
+
+
+///_____THE___END
